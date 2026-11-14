@@ -23,6 +23,8 @@ import argparse, concurrent.futures, io, json, os, platform, re, socket, subproc
 from pathlib import Path
 from urllib.request import urlopen
 
+import license_key as lk
+
 ADB_PORT   = 5555
 DASH_MODEL = "Zkswe_V85X_SPINOR"
 CFG        = "/data/zkapp.cfg"
@@ -34,6 +36,7 @@ PT_VER     = "r28.0.1"
 # Windows: don't open a console window for each adb call (matters in the GUI .exe)
 NO_WINDOW  = {"creationflags": 0x08000000} if platform.system() == "Windows" else {}
 
+DASH_ID = None   # ID of the connected dash, read in connect_dash()
 ADB = None
 S   = None
 
@@ -122,14 +125,19 @@ def connect_dash(ip):
         S = found
     m = model_of(S)
     if m != DASH_MODEL: die(f"device at {S} is '{m}', not {DASH_MODEL}; refusing")
-    log(f"connected to dash at {S} ({m})")
+    # Read the dash ID before any action, so every action knows which dash it is on.
+    global DASH_ID
+    DASH_ID = lk.read_dash_id(sh)
+    if not DASH_ID: die("could not read a serial number or Wi-Fi MAC address from the dash; refusing")
+    log(f"connected to dash at {S} ({m}), dash ID {DASH_ID}")
 
 # ----- restore --------------------------------------------------------------
 def do_restore():
-    baks = sorted(BACKUPDIR.glob("zkapp.cfg.*.bak"), key=lambda p: p.stat().st_mtime, reverse=True)
-    if not baks: die(f"no local backup found in {BACKUPDIR}")
-    bak = baks[0]
+    did = DASH_ID
+    bak = lk.pick_backup(BACKUPDIR, did)
+    if not bak: die(f"no backup of this dash (ID {did}) with CarPlay off found in {BACKUPDIR}")
     log(f"restoring {bak} -> dash {CFG}")
+    if lk.read_dash_id(sh) != DASH_ID: die("dash ID changed since connecting; refusing to write")
     run(["-s", S, "push", str(bak), "/tmp/zkapp.restore"], check=True)
     sh(f"setprop ctl.stop zkswe; cp /tmp/zkapp.restore {CFG}; sync; setprop ctl.start zkswe")
     log("restored. UI restarting.")

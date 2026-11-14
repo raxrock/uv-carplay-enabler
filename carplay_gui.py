@@ -53,9 +53,17 @@ class App:
         ttk.Entry(row, textvariable=self.ip, width=18).pack(side="left", padx=6)
         ttk.Label(row, text="(leave empty to auto-detect on your Wi-Fi)").pack(side="left")
 
+        krow = ttk.Frame(frm); krow.pack(fill="x", pady=(6, 0))
+        ttk.Label(krow, text="License key:").pack(side="left")
+        self.key = tk.StringVar(value=ec.saved_key())
+        ttk.Entry(krow, textvariable=self.key, width=60).pack(side="left", padx=6, fill="x", expand=True)
+        ttk.Label(frm, text="Needed only for \"Enable CarPlay\". Click \"Show dash ID\" to get the ID "
+                  "you enter when you buy a key.", foreground="#666").pack(anchor="w")
+
         btns = ttk.Frame(frm); btns.pack(fill="x", pady=10)
         self.buttons = []
         for label, fn in [
+            ("Show dash ID", self.show_id),
             ("Preview change", self.preview),
             ("Enable CarPlay", self.enable),
             ("Verify: start", self.verify_start),
@@ -131,6 +139,9 @@ class App:
 
         threading.Thread(target=work, daemon=True).start()
 
+    def show_id(self):
+        self.start("Show dash ID", ec, lambda m: print(f"Your dash ID: {m.read_dash_id()}"))
+
     def preview(self):
         self.start("Preview", ec, lambda m: m.do_apply("dry-run", False))
 
@@ -138,7 +149,8 @@ class App:
         if messagebox.askokcancel(APP_TITLE,
                 "Enable CarPlay now?\n\nThe dash screen goes blank for a few seconds "
                 "while its UI restarts. A backup is saved first."):
-            self.start("Enable CarPlay", ec, lambda m: m.do_apply("apply", False))
+            key = self.key.get().strip()   # read here: Tk is not thread-safe
+            self.start("Enable CarPlay", ec, lambda m: m.do_apply("apply", False, key))
 
     def verify_start(self):
         ip = self.ip.get().strip() or None   # read here: Tk is not thread-safe

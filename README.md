@@ -86,6 +86,29 @@ networks.
 
 The app stores adb and backups in `%LOCALAPPDATA%\UVCarPlay`.
 
+## License keys
+
+**Enable CarPlay** (and `enable_carplay.py` without `--dry-run`) needs a license
+key made for the connected dash. Preview, **Show dash ID** and **Undo** work
+without one. A key is an Ed25519 signature over the dash ID (its
+`ro.serialno`, or `mac-` plus its Wi-Fi MAC address if the serial is missing),
+so a key works on one dash only. The app saves a valid key in `license.txt`
+next to its backups.
+
+A second dash needs its own key. Backups are kept per dash
+(`backup/dash-<id>/`), and **Undo** restores only the connected dash's own
+backups and never one with CarPlay switched on, so Undo cannot unlock a dash.
+
+Owner only, making keys:
+
+```sh
+python3 make_license.py genkey          # once; key saved to ~/.carplay-license/
+python3 make_license.py sign <dash-id>  # per sale; prints the buyer's key
+```
+
+Never commit `~/.carplay-license/`: anyone with that file can make keys.
+Tests: `PYTHONPATH=. python3 -m unittest discover -s tests`.
+
 ---
 
 ## Quick start

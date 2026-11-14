@@ -27,10 +27,17 @@ Usage:
   python3 enable_carplay.py --restore       # restore the most recent local backup
   python3 enable_carplay.py --dry-run       # show what would change, write nothing
   python3 enable_carplay.py --self-destruct # delete THIS script after a successful apply
+  python3 enable_carplay.py --show-id       # print this dash's ID (needed to buy a license key)
+  python3 enable_carplay.py --key XXXXX-... # license key for this dash (saved after first use)
+
+Applying the change needs a license key made for this dash's ID (see
+license_key.py). Preview (--dry-run) and --restore work without one.
 """
 import argparse, concurrent.futures, io, json, os, platform, socket, subprocess, sys, time, zipfile
 from pathlib import Path
 from urllib.request import urlopen
+
+import license_key as lk
 
 # ----- config ---------------------------------------------------------------
 ADB_PORT   = 5555
@@ -39,12 +46,14 @@ CFG        = "/data/zkapp.cfg"
 WORKDIR    = Path(os.environ.get("WORKDIR", Path.home() / "UVA"))
 TOOLDIR    = WORKDIR / "tools" / "platform-tools"
 BACKUPDIR  = WORKDIR / "backup"
+LICENSE    = WORKDIR / "license.txt"
 PT_VER     = "r28.0.1"
 SELF       = Path(__file__).resolve()
 
 # Windows: don't open a console window for each adb call (matters in the GUI .exe)
 NO_WINDOW  = {"creationflags": 0x08000000} if platform.system() == "Windows" else {}
 
+DASH_ID = None   # ID of the connected dash, read in connect_dash()
 ADB = None   # resolved adb path
 S   = None   # "ip:port" of the connected dash
 
@@ -147,7 +156,11 @@ def connect_dash(ip):
         S = found
     m = model_of(S)
     if m != DASH_MODEL: die(f"device at {S} is '{m}', not {DASH_MODEL}; refusing")
-    log(f"connected to dash at {S} ({m})")
+    # Read the dash ID before any action, so every action knows which dash it is on.
+    global DASH_ID
+    DASH_ID = lk.read_dash_id(sh)
+    if not DASH_ID: die("could not read a serial number or Wi-Fi MAC address from the dash; refusing")
+    log(f"connected to dash at {S} ({m}), dash ID {DASH_ID}")
 
 # ----- config helpers -------------------------------------------------------
 def read_cfg():
@@ -157,21 +170,46 @@ def render(d):
     """json with the dash's formatting: 3-space indent, '\"key\" : value'."""
     return json.dumps(d, indent=3).replace('": ', '" : ') + "\n"
 
+# ----- license --------------------------------------------------------------
+def read_dash_id():
+    if not DASH_ID: die("not connected to a dash")
+    return DASH_ID
+
+def saved_key():
+    try: return LICENSE.read_text().strip()
+    except OSError: return ""
+
+def check_license(key):
+    """Exit unless `key` (or the saved key) is valid for the connected dash."""
+    did = read_dash_id()
+    key = (key or "").strip() or saved_key()
+    if not key:
+        die(f"a license key is needed to apply the change. Your dash ID is: {did}")
+    if not lk.is_valid(key, did):
+        die(f"this license key is not valid for this dash. Your dash ID is: {did}")
+    LICENSE.parent.mkdir(parents=True, exist_ok=True)
+    LICENSE.write_text(lk.normalize(key) + "\n")
+    log("license key OK for this dash")
+
 # ----- operations -----------------------------------------------------------
 def do_restore():
-    baks = sorted(BACKUPDIR.glob("zkapp.cfg.*.bak"), key=lambda p: p.stat().st_mtime, reverse=True)
-    if not baks: die(f"no local backup found in {BACKUPDIR}")
-    bak = baks[0]
+    did = DASH_ID
+    bak = lk.pick_backup(BACKUPDIR, did)
+    if not bak: die(f"no backup of this dash (ID {did}) with CarPlay off found in {BACKUPDIR}")
     log(f"restoring {bak} -> dash {CFG}")
+    if lk.read_dash_id(sh) != DASH_ID: die("dash ID changed since connecting; refusing to write")
     run(["-s", S, "push", str(bak), "/tmp/zkapp.restore"], check=True)
     sh(f"setprop ctl.stop zkswe; cp /tmp/zkapp.restore {CFG}; sync; setprop ctl.start zkswe")
     log("restored. UI restarting.")
 
-def do_apply(mode, self_destruct):
-    BACKUPDIR.mkdir(parents=True, exist_ok=True)
+def do_apply(mode, self_destruct, key=None):
+    if mode == "apply":
+        check_license(key)   # before anything is written to the dash
+    bdir = lk.prepare_backup_dir(BACKUPDIR, read_dash_id())
+    if not bdir: die(f"backup folder for dash {DASH_ID} belongs to a different dash; refusing")
     ts   = time.strftime("%Y%m%d_%H%M%S")
-    orig = BACKUPDIR / f"zkapp.cfg.{ts}.bak"
-    new  = BACKUPDIR / f"zkapp.cfg.{ts}.new"
+    orig = bdir / f"zkapp.cfg.{ts}.bak"
+    new  = bdir / f"zkapp.cfg.{ts}.new"
 
     cur = read_cfg()
     if not cur.strip(): die(f"could not read {CFG} from dash")
@@ -203,6 +241,7 @@ def do_apply(mode, self_destruct):
         return False
 
     # stage + verify upload
+    if lk.read_dash_id(sh) != DASH_ID: die("dash ID changed since connecting; refusing to write")
     run(["-s", S, "push", str(new), "/tmp/zkapp.cfg.new"], check=True)
     staged = BACKUPDIR / f".staged.{os.getpid()}"
     run(["-s", S, "pull", "/tmp/zkapp.cfg.new", str(staged)])
@@ -257,7 +296,9 @@ def main():
     g = p.add_mutually_exclusive_group()
     g.add_argument("--restore", action="store_true")
     g.add_argument("--dry-run", dest="dry_run", action="store_true")
+    g.add_argument("--show-id", dest="show_id", action="store_true")
     p.add_argument("--self-destruct", action="store_true")
+    p.add_argument("--key", help="license key for this dash")
     a = p.parse_args()
 
     ensure_adb()
@@ -266,8 +307,11 @@ def main():
     if a.restore:
         do_restore()
         return
+    if a.show_id:
+        print(read_dash_id())
+        return
     mode = "dry-run" if a.dry_run else "apply"
-    applied_ok = do_apply(mode, a.self_destruct)
+    applied_ok = do_apply(mode, a.self_destruct, a.key)
 
     if a.self_destruct:
         if mode == "apply" and applied_ok:
