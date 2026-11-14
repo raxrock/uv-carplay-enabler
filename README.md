@@ -76,7 +76,7 @@ pinned. You do not need to install adb yourself.
 2. Run it. The app is not code-signed, so Windows may show "Windows protected
    your PC". Click **More info**, then **Run anyway**.
 3. Enter the dash IP address, or leave it empty to auto-detect.
-4. Click **Preview change** to see what will change, then **Enable CarPlay**.
+4. Click **Preview change** to check the dash can be enabled, then **Enable CarPlay**.
 
 The buttons do the same as the scripts: **Verify: start** and **Verify: check**
 run the [verification](#verify-carplay-works), and **Undo** restores the latest
@@ -144,7 +144,7 @@ Then set up the dash for CarPlay:
 |---|---|
 | *(none)* | Find the dash on the LAN and apply the fix. |
 | `--ip <addr>` | Use this dash IP and skip the LAN scan. Works with any other flag. |
-| `--dry-run` | Show the config diff. Write nothing. |
+| `--dry-run` | Check whether CarPlay needs enabling. Does not show the change or save it. Writes nothing to the dash. |
 | `--restore` | Put back the most recent local backup. |
 | `--self-destruct` | Delete the script after a successful apply. |
 | `--help` | Print the built-in help. |

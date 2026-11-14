@@ -159,7 +159,7 @@ def do_start(ip):
     except Exception:
         ok = False
     if not ok:
-        log("WARNING: uv_app_use is not true yet. Run enable_carplay.py first, or the test will FAIL.")
+        log("WARNING: CarPlay is not enabled yet. Enable it first, or the test will FAIL.")
     sh("for p in $(ps | grep logcat | grep -v grep | awk '{print $2}'); do kill $p 2>/dev/null; done; "
        f"mkdir -p {d}; rm -f {f}; (logcat -v time </dev/null >{f} 2>&1 &)")
     time.sleep(2)
@@ -216,7 +216,7 @@ def do_check():
         rc = 0
     else:
         log("FAIL: hotspot did not come up or was torn down (the pre-fix symptom).")
-        log(f"  -> confirm uv_app_use is true: {ADB} -s {S} shell cat {CFG}")
+        log("  -> confirm CarPlay is enabled: run Preview; it should say CarPlay is already enabled.")
         log("  -> confirm Wi-Fi was OFF before opening the Link screen (STA blocks the AP).")
         rc = 1
 

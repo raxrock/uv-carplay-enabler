@@ -222,7 +222,14 @@ def do_apply(mode, self_destruct, key=None):
     sh(f"cp {CFG} {CFG}.bak")
 
     if d.get("uv_app_use") is True:
-        log("uv_app_use is already true. Nothing to do.")
+        log("CarPlay is already enabled. Nothing to do.")
+        return False
+
+    # Preview needs no key, so it must not reveal the setting or leave a
+    # ready-made config behind: it reports only that one setting changes.
+    if mode == "dry-run":
+        log("PREVIEW: 1 setting will change to enable CarPlay. All other settings stay the same.")
+        log("preview complete; nothing written to the dash.")
         return False
 
     d["uv_app_use"] = True
@@ -230,15 +237,6 @@ def do_apply(mode, self_destruct, key=None):
     json.loads(text)                       # sanity
     new.write_text(text)
     log(f"new config written -> {new}")
-
-    if mode == "dry-run":
-        log("DRY RUN — current vs new:")
-        for a, b in zip(cur.splitlines(), text.splitlines()):
-            if a != b: print(f"  - {a}\n  + {b}")
-        extra = text.splitlines()[len(cur.splitlines()):]
-        for b in extra: print(f"  + {b}")
-        log("dry run complete; nothing written to the dash.")
-        return False
 
     # stage + verify upload
     if lk.read_dash_id(sh) != DASH_ID: die("dash ID changed since connecting; refusing to write")
@@ -272,9 +270,9 @@ def do_apply(mode, self_destruct, key=None):
     except Exception:
         ok = False
     if ok:
-        log("SUCCESS: uv_app_use is true and persisted.")
+        log("SUCCESS: CarPlay is enabled and the setting persisted.")
     else:
-        log(f"WARNING: uv_app_use not confirmed after UI restart. Re-check: {ADB} -s {S} shell cat {CFG}")
+        log("WARNING: the CarPlay setting was not confirmed after the UI restart. Run Preview to re-check.")
 
     print(f"""
 Done. Next, on the parked bike:
