@@ -31,6 +31,9 @@ TOOLDIR    = WORKDIR / "tools" / "platform-tools"
 BACKUPDIR  = WORKDIR / "backup"
 PT_VER     = "r28.0.1"
 
+# Windows: don't open a console window for each adb call (matters in the GUI .exe)
+NO_WINDOW  = {"creationflags": 0x08000000} if platform.system() == "Windows" else {}
+
 ADB = None
 S   = None
 
@@ -59,7 +62,8 @@ def ensure_adb():
     if platform.system() != "Windows": os.chmod(ADB, 0o755)
 
 def run(args, timeout=120, check=False):
-    r = subprocess.run([str(ADB)] + args, capture_output=True, text=True, timeout=timeout)
+    r = subprocess.run([str(ADB)] + args, capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=timeout, stdin=subprocess.DEVNULL, **NO_WINDOW)
     if check and r.returncode != 0: die(f"adb {' '.join(args)} failed: {r.stderr.strip()}")
     return r
 

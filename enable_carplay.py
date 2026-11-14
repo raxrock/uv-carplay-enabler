@@ -42,6 +42,9 @@ BACKUPDIR  = WORKDIR / "backup"
 PT_VER     = "r28.0.1"
 SELF       = Path(__file__).resolve()
 
+# Windows: don't open a console window for each adb call (matters in the GUI .exe)
+NO_WINDOW  = {"creationflags": 0x08000000} if platform.system() == "Windows" else {}
+
 ADB = None   # resolved adb path
 S   = None   # "ip:port" of the connected dash
 
@@ -77,7 +80,8 @@ def ensure_adb():
 def run(args, timeout=120, check=False):
     """Run an adb command. args is a list AFTER the adb binary."""
     cmd = [str(ADB)] + args
-    r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       timeout=timeout, stdin=subprocess.DEVNULL, **NO_WINDOW)
     if check and r.returncode != 0:
         die(f"adb {' '.join(args)} failed: {r.stderr.strip()}")
     return r

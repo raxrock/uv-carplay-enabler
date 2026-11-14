@@ -14,6 +14,7 @@ motorcycle dash. The dash runs on the ZKSWE **FlyThings V2.1** platform
 ## Contents
 
 - [How it works](#how-it-works)
+- [Windows app (no Python needed)](#windows-app-no-python-needed)
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
 - [Usage](#usage)
@@ -65,6 +66,25 @@ same thing and take the same flags.
 **adb:** the scripts download Android **platform-tools r28** on the first run.
 Newer adb versions break file transfer with this dash's old adbd, so r28 is
 pinned. You do not need to install adb yourself.
+
+---
+
+## Windows app (no Python needed)
+
+1. Download `UVCarPlay.exe` from the
+   [Releases](https://github.com/raxrock/uv-carplay-enabler/releases) page.
+2. Run it. The app is not code-signed, so Windows may show "Windows protected
+   your PC". Click **More info**, then **Run anyway**.
+3. Enter the dash IP address, or leave it empty to auto-detect.
+4. Click **Preview change** to see what will change, then **Enable CarPlay**.
+
+The buttons do the same as the scripts: **Verify: start** and **Verify: check**
+run the [verification](#verify-carplay-works), and **Undo** restores the latest
+backup. On first run the app downloads adb, so the PC needs internet once.
+Windows may also ask to allow adb through the firewall: allow it on private
+networks.
+
+The app stores adb and backups in `%LOCALAPPDATA%\UVCarPlay`.
 
 ---
 
@@ -267,6 +287,8 @@ preferences. Note them down first if you want to set them up again.
 |---|---|
 | [`enable_carplay.sh`](enable_carplay.sh) / [`enable_carplay.py`](enable_carplay.py) | Apply the fix. Also `--dry-run`, `--restore`, `--self-destruct`. |
 | [`verify_carplay.sh`](verify_carplay.sh) / [`verify_carplay.py`](verify_carplay.py) | Runtime PASS/FAIL check (`--start`, `--check`) and undo (`--restore`). |
+| [`carplay_gui.py`](carplay_gui.py) | Desktop window around the Python scripts. Source of `UVCarPlay.exe`. |
+| [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml) | Builds `UVCarPlay.exe` on GitHub. A `v*` tag publishes it as a Release. |
 
 ---
 
