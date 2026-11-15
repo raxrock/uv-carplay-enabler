@@ -51,7 +51,7 @@ class App:
         ttk.Label(row, text="Dash IP address:").pack(side="left")
         self.ip = tk.StringVar()
         ttk.Entry(row, textvariable=self.ip, width=18).pack(side="left", padx=6)
-        ttk.Label(row, text="(click \"Find dash IP\", or leave empty to auto-detect)").pack(side="left")
+        ttk.Label(row, text="(required — see the README for how to find it)").pack(side="left")
 
         krow = ttk.Frame(frm); krow.pack(fill="x", pady=(6, 0))
         ttk.Label(krow, text="License key:").pack(side="left")
@@ -63,7 +63,6 @@ class App:
         btns = ttk.Frame(frm); btns.pack(fill="x", pady=10)
         self.buttons = []
         for label, fn in [
-            ("Find dash IP", self.find_ip),
             ("Show dash ID", self.show_id),
             ("Preview change", self.preview),
             ("Enable CarPlay", self.enable),
@@ -97,8 +96,6 @@ class App:
                     self.out.insert("end", val)
                     self.out.see("end")
                     self.out.configure(state="disabled")
-                elif kind == "setip":
-                    self.ip.set(val)
                 elif kind == "done":
                     self.set_busy(False, val)
         except queue.Empty:
@@ -117,6 +114,11 @@ class App:
         if self.busy:
             return
         ip = self.ip.get().strip() or None
+        if not ip:
+            messagebox.showinfo(APP_TITLE,
+                "Enter the dash IP address in the box first.\n\n"
+                "See the README for how to find your dash's IP address.")
+            return
         self.set_busy(True, f"{name}: running...")
         self.q.put(("log", f"\n===== {name} =====\n"))
 
@@ -141,14 +143,6 @@ class App:
                 self.q.put(("done", result))
 
         threading.Thread(target=work, daemon=True).start()
-
-    def find_ip(self):
-        self.ip.set("")   # clear so connect_dash scans instead of using the box
-        def action(m):
-            found = m.S.split(":")[0]
-            self.q.put(("setip", found))
-            print(f"Found the dash at {found}. The IP box is filled in.")
-        self.start("Find dash IP", ec, action)
 
     def show_id(self):
         self.start("Show dash ID", ec, lambda m: print(f"Your dash ID: {m.read_dash_id()}"))

@@ -14,12 +14,11 @@ Between them, on the PARKED bike: open the Link screen, connect CarPlay from the
 iPhone, let it sit ~15 s, then turn the dash Wi-Fi back ON so adb reconnects.
 
 Usage:
-  python3 verify_carplay.py --start
   python3 verify_carplay.py --ip 192.168.1.16 --start
   python3 verify_carplay.py --ip 192.168.1.16 --check
   python3 verify_carplay.py --ip 192.168.1.16 --restore
 """
-import argparse, concurrent.futures, io, json, os, platform, re, socket, subprocess, sys, time, zipfile
+import argparse, io, json, os, platform, re, subprocess, sys, time, zipfile
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -79,50 +78,19 @@ def reset_adb_server():
 def adb_ok(t):
     return "ok" in run(["-s", t, "shell", "echo", "ok"], timeout=20).stdout
 
-def local_subnet():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close()
-        return ip.rsplit(".", 1)[0]
-    except Exception:
-        return None
-
-def scan_lan(base):
-    def probe(i):
-        a = f"{base}.{i}"; s = socket.socket(); s.settimeout(0.3)
-        ok = s.connect_ex((a, ADB_PORT)) == 0; s.close()
-        return a if ok else None
-    hits = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=128) as ex:
-        for r in ex.map(probe, range(2, 255)):
-            if r: hits.append(r)
-    return hits
-
 def model_of(t):
     return run(["-s", t, "shell", "getprop", "ro.product.model"], timeout=20).stdout.replace("\r", "").strip()
 
 def connect_dash(ip):
     global S
+    if not ip: die("enter the dash IP address (see the README for how to find it)")
     reset_adb_server()
-    if ip:
-        S = f"{ip}:{ADB_PORT}"
-        for _ in range(5):
-            run(["connect", S], timeout=20)
-            if adb_ok(S): break
-            run(["disconnect", S]); time.sleep(2)
-        if not adb_ok(S): die(f"could not connect to {S}")
-    else:
-        base = local_subnet()
-        if not base: die("could not auto-detect your network. Enter the dash IP address and try again.")
-        log(f"scanning {base}.0/24 for the dash (adb port {ADB_PORT} open)...")
-        found = None
-        for host in scan_lan(base):
-            t = f"{host}:{ADB_PORT}"
-            run(["connect", t], timeout=20)
-            if adb_ok(t) and model_of(t) == DASH_MODEL:
-                found = t; break
-        if not found: die("dash not found automatically. Enter the dash IP address and try again.")
-        S = found
+    S = f"{ip}:{ADB_PORT}"
+    for _ in range(5):
+        run(["connect", S], timeout=20)
+        if adb_ok(S): break
+        run(["disconnect", S]); time.sleep(2)
+    if not adb_ok(S): die(f"could not connect to {S}. Check the dash IP address and that the dash is on.")
     m = model_of(S)
     if m != DASH_MODEL: die(f"device at {S} is '{m}', not {DASH_MODEL}; refusing")
     # Read the dash ID before any action, so every action knows which dash it is on.

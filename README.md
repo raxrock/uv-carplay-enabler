@@ -15,6 +15,7 @@ motorcycle dash. The dash runs on the ZKSWE **FlyThings V2.1** platform
 
 - [How it works](#how-it-works)
 - [Windows app (no Python needed)](#windows-app-no-python-needed)
+- [Find your dash IP address](#find-your-dash-ip-address)
 - [Requirements](#requirements)
 - [Quick start](#quick-start)
 - [Usage](#usage)
@@ -78,8 +79,8 @@ pinned. You do not need to install adb yourself.
 3. If Microsoft Defender or another antivirus flags the app as a virus, it is a
    **false positive**. See [ANTIVIRUS.md](ANTIVIRUS.md) for why, and how to
    allow the app.
-4. Enter the dash IP address, or click **Find dash IP** to search your Wi-Fi
-   and fill it in. (Leaving it empty also auto-detects.)
+4. Enter the dash IP address in the box. See
+   [Find your dash IP address](#find-your-dash-ip-address) for how to get it.
 5. Click **Preview change** to check the dash can be enabled, then **Enable CarPlay**.
 
 The buttons do the same as the scripts: **Verify: start** and **Verify: check**
@@ -89,6 +90,22 @@ Windows may also ask to allow adb through the firewall: allow it on private
 networks.
 
 The app stores adb and backups in `%LOCALAPPDATA%\UVCarPlay`.
+
+### Find your dash IP address
+
+The app needs the dash's IP address; it does not scan your network for it. Get
+the address one of these ways:
+
+1. **Your router.** Open your router's page in a browser (often
+   `http://192.168.1.1` or `http://192.168.0.1`), sign in, and open the list of
+   connected devices. The dash appears as a device (its name may be `Zkswe` or
+   show as an unknown/Allwinner device). Use the IP shown next to it.
+2. **A phone app.** A Wi-Fi/LAN scanner app such as Fing lists every device on
+   your Wi-Fi with its IP address.
+3. **On the dash.** Some dash firmware shows its own IP under
+   Settings → Wi-Fi → the connected network.
+
+The dash and your computer must be on the same Wi-Fi network.
 
 ## License keys
 
@@ -147,7 +164,7 @@ Then set up the dash for CarPlay:
 | Flag | Action |
 |---|---|
 | *(none)* | Find the dash on the LAN and apply the fix. |
-| `--ip <addr>` | Use this dash IP and skip the LAN scan. Works with any other flag. |
+| `--ip <addr>` | The dash IP address (required). Works with any other flag. |
 | `--dry-run` | Check whether CarPlay needs enabling. Does not show the change or save it. Writes nothing to the dash. |
 | `--restore` | Put back the most recent local backup. |
 | `--self-destruct` | Delete the script after a successful apply. |
@@ -163,7 +180,7 @@ python enable_carplay.py --ip 192.168.1.16 --dry-run
 ### What the apply step does
 
 1. Checks prerequisites and downloads the pinned adb if it is missing.
-2. Finds the dash, by LAN scan or `--ip`, and confirms its model is
+2. Connects to the dash at the `--ip` address and confirms its model is
    `Zkswe_V85X_SPINOR`. The scripts refuse to act on any other device.
 3. Backs up `/data/zkapp.cfg` on the dash (`/data/zkapp.cfg.bak`) and on your
    computer (a timestamped copy).

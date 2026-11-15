@@ -8,7 +8,7 @@ Cross-platform (Windows, macOS, Linux). Runtime verification is in verify_carpla
 What it does:
   1. Ensures an adb that works with this dash (platform-tools r28; newer adb
      breaks file transfer on this old adbd). Downloads it if missing.
-  2. Connects to the dash over adb (auto-detects on the LAN, or use --ip).
+  2. Connects to the dash over adb at the IP given with --ip.
   3. Backs up /data/zkapp.cfg (on the dash and locally).
   4. Adds "uv_app_use": true, preserving every other key.
   5. Stops the dash UI, installs the file, verifies byte-for-byte, restarts UI.
@@ -22,8 +22,7 @@ SAFETY:
   - adb over Wi-Fi drops when the dash switches to its CarPlay hotspot. Expected.
 
 Usage:
-  python3 enable_carplay.py                 # auto-detect dash, apply fix
-  python3 enable_carplay.py --ip 192.168.1.16
+  python3 enable_carplay.py --ip 192.168.1.16   # connect to the dash and apply the fix
   python3 enable_carplay.py --restore       # restore the most recent local backup
   python3 enable_carplay.py --dry-run       # show what would change, write nothing
   python3 enable_carplay.py --self-destruct # delete THIS script after a successful apply
@@ -33,7 +32,7 @@ Usage:
 Applying the change needs a license key made for this dash's ID (see
 license_key.py). Preview (--dry-run) and --restore work without one.
 """
-import argparse, concurrent.futures, io, json, os, platform, socket, subprocess, sys, time, zipfile
+import argparse, io, json, os, platform, subprocess, sys, time, zipfile
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -108,52 +107,19 @@ def adb_ok(target):
     r = run(["-s", target, "shell", "echo", "ok"], timeout=20)
     return "ok" in r.stdout
 
-def local_subnet():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close()
-        return ip.rsplit(".", 1)[0]
-    except Exception:
-        return None
-
-def scan_lan(base):
-    def probe(i):
-        a = f"{base}.{i}"
-        s = socket.socket(); s.settimeout(0.3)
-        ok = s.connect_ex((a, ADB_PORT)) == 0
-        s.close()
-        return a if ok else None
-    hits = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=128) as ex:
-        for r in ex.map(probe, range(2, 255)):
-            if r: hits.append(r)
-    return hits
-
 def model_of(target):
     return run(["-s", target, "shell", "getprop", "ro.product.model"], timeout=20).stdout.replace("\r", "").strip()
 
 def connect_dash(ip):
     global S
+    if not ip: die("enter the dash IP address (see the README for how to find it)")
     reset_adb_server()
-    if ip:
-        S = f"{ip}:{ADB_PORT}"
-        for _ in range(5):
-            run(["connect", S], timeout=20)
-            if adb_ok(S): break
-            run(["disconnect", S]); time.sleep(2)
-        if not adb_ok(S): die(f"could not connect to {S}")
-    else:
-        base = local_subnet()
-        if not base: die("could not auto-detect your network. Enter the dash IP address and try again.")
-        log(f"scanning {base}.0/24 for the dash (adb port {ADB_PORT} open)...")
-        found = None
-        for host in scan_lan(base):
-            t = f"{host}:{ADB_PORT}"
-            run(["connect", t], timeout=20)
-            if adb_ok(t) and model_of(t) == DASH_MODEL:
-                found = t; break
-        if not found: die("dash not found automatically. Enter the dash IP address and try again.")
-        S = found
+    S = f"{ip}:{ADB_PORT}"
+    for _ in range(5):
+        run(["connect", S], timeout=20)
+        if adb_ok(S): break
+        run(["disconnect", S]); time.sleep(2)
+    if not adb_ok(S): die(f"could not connect to {S}. Check the dash IP address and that the dash is on.")
     m = model_of(S)
     if m != DASH_MODEL: die(f"device at {S} is '{m}', not {DASH_MODEL}; refusing")
     # Read the dash ID before any action, so every action knows which dash it is on.
