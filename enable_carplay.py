@@ -144,7 +144,7 @@ def connect_dash(ip):
         if not adb_ok(S): die(f"could not connect to {S}")
     else:
         base = local_subnet()
-        if not base: die("could not determine LAN subnet; pass --ip")
+        if not base: die("could not auto-detect your network. Enter the dash IP address and try again.")
         log(f"scanning {base}.0/24 for the dash (adb port {ADB_PORT} open)...")
         found = None
         for host in scan_lan(base):
@@ -152,7 +152,7 @@ def connect_dash(ip):
             run(["connect", t], timeout=20)
             if adb_ok(t) and model_of(t) == DASH_MODEL:
                 found = t; break
-        if not found: die("dash not found on LAN; pass --ip")
+        if not found: die("dash not found automatically. Enter the dash IP address and try again.")
         S = found
     m = model_of(S)
     if m != DASH_MODEL: die(f"device at {S} is '{m}', not {DASH_MODEL}; refusing")
@@ -274,16 +274,15 @@ def do_apply(mode, self_destruct, key=None):
     else:
         log("WARNING: the CarPlay setting was not confirmed after the UI restart. Run Preview to re-check.")
 
-    print(f"""
+    print("""
 Done. Next, on the parked bike:
   1. Open the dash Link / phone-projection screen.
-     The dash switches to its CarPlay hotspot; adb over Wi-Fi will drop (expected).
+     The dash switches to its CarPlay hotspot; the Wi-Fi link to it will drop (expected).
   2. On the iPhone, a dash Wi-Fi network (e.g. UVA-xxxx_xxxx) should appear.
   3. Connect CarPlay from the iPhone.
 
-To check it connected:  python3 verify_carplay.py --ip {S.split(':')[0]} --start   (then --check)
-To undo:                python3 enable_carplay.py --restore   (or verify_carplay.py --restore)
-Backup:                 {orig}
+To confirm it connected, use "Verify: start" then "Verify: check".
+To undo this change, use "Undo".
 """)
     return ok
 

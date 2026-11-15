@@ -113,7 +113,7 @@ def connect_dash(ip):
         if not adb_ok(S): die(f"could not connect to {S}")
     else:
         base = local_subnet()
-        if not base: die("could not determine LAN subnet; pass --ip")
+        if not base: die("could not auto-detect your network. Enter the dash IP address and try again.")
         log(f"scanning {base}.0/24 for the dash (adb port {ADB_PORT} open)...")
         found = None
         for host in scan_lan(base):
@@ -121,7 +121,7 @@ def connect_dash(ip):
             run(["connect", t], timeout=20)
             if adb_ok(t) and model_of(t) == DASH_MODEL:
                 found = t; break
-        if not found: die("dash not found on LAN; pass --ip")
+        if not found: die("dash not found automatically. Enter the dash IP address and try again.")
         S = found
     m = model_of(S)
     if m != DASH_MODEL: die(f"device at {S} is '{m}', not {DASH_MODEL}; refusing")
@@ -166,15 +166,14 @@ def do_start(ip):
     if "logcat" not in sh("ps"):
         die("could not start the log recorder on the dash")
     log(f"log recorder running on dash -> {f}")
-    ipshow = f" --ip {ip}" if ip else ""
-    print(f"""
+    print("""
 Now, on the PARKED bike:
   1. Open the dash Link / phone-projection screen.
-  2. The dash starts its CarPlay hotspot; adb over Wi-Fi WILL drop (expected).
+  2. The dash starts its CarPlay hotspot; the Wi-Fi link to it WILL drop (expected).
   3. On the iPhone, connect CarPlay (it should appear / auto-connect).
   4. Let it sit connected for ~15 seconds.
-  5. Turn the dash Wi-Fi back ON (Settings -> Wi-Fi) so adb reconnects.
-  6. Run:  python3 verify_carplay.py{ipshow} --check
+  5. Turn the dash Wi-Fi back ON (Settings -> Wi-Fi) so it reconnects.
+  6. Click "Verify: check".
 """)
 
 def read_cfg_for_start():
@@ -186,7 +185,7 @@ def do_check():
     L = BACKUPDIR / f"verify_{time.strftime('%Y%m%d_%H%M%S')}.txt"
     r = run(["-s", S, "pull", f, str(L)])
     if r.returncode != 0 or not L.exists() or L.stat().st_size == 0:
-        die(f"could not pull log {f} (was --start run? did the Link screen get opened?)")
+        die("no verification log found. Click \"Verify: start\" first, then open the Link screen on the dash.")
     log(f"pulled verification log -> {L}")
     txt = L.read_text(errors="replace")
 
@@ -221,7 +220,7 @@ def do_check():
         rc = 1
 
     sh("for p in $(ps | grep logcat | grep -v grep | awk '{print $2}'); do kill $p 2>/dev/null; done")
-    log(f"log recorder stopped. Dash log kept at {f} (delete with: {ADB} -s {S} shell rm {f})")
+    log(f"log recorder stopped. Dash log kept at {f} on the dash.")
     sys.exit(rc)
 
 # ----- main -----------------------------------------------------------------
