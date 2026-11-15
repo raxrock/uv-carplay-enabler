@@ -78,7 +78,8 @@ pinned. You do not need to install adb yourself.
 3. If Microsoft Defender or another antivirus flags the app as a virus, it is a
    **false positive**. See [ANTIVIRUS.md](ANTIVIRUS.md) for why, and how to
    allow the app.
-4. Enter the dash IP address, or leave it empty to auto-detect.
+4. Enter the dash IP address, or click **Find dash IP** to search your Wi-Fi
+   and fill it in. (Leaving it empty also auto-detects.)
 5. Click **Preview change** to check the dash can be enabled, then **Enable CarPlay**.
 
 The buttons do the same as the scripts: **Verify: start** and **Verify: check**
