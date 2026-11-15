@@ -75,8 +75,11 @@ pinned. You do not need to install adb yourself.
    [Releases](https://github.com/raxrock/uv-carplay-enabler/releases) page.
 2. Run it. The app is not code-signed, so Windows may show "Windows protected
    your PC". Click **More info**, then **Run anyway**.
-3. Enter the dash IP address, or leave it empty to auto-detect.
-4. Click **Preview change** to check the dash can be enabled, then **Enable CarPlay**.
+3. If Microsoft Defender or another antivirus flags the app as a virus, it is a
+   **false positive**. See [ANTIVIRUS.md](ANTIVIRUS.md) for why, and how to
+   allow the app.
+4. Enter the dash IP address, or leave it empty to auto-detect.
+5. Click **Preview change** to check the dash can be enabled, then **Enable CarPlay**.
 
 The buttons do the same as the scripts: **Verify: start** and **Verify: check**
 run the [verification](#verify-carplay-works), and **Undo** restores the latest
@@ -312,6 +315,7 @@ preferences. Note them down first if you want to set them up again.
 | [`verify_carplay.sh`](verify_carplay.sh) / [`verify_carplay.py`](verify_carplay.py) | Runtime PASS/FAIL check (`--start`, `--check`) and undo (`--restore`). |
 | [`carplay_gui.py`](carplay_gui.py) | Desktop window around the Python scripts. Source of `UVCarPlay.exe`. |
 | [`.github/workflows/build-windows.yml`](.github/workflows/build-windows.yml) | Builds `UVCarPlay.exe` on GitHub. A `v*` tag publishes it as a Release. |
+| [`ANTIVIRUS.md`](ANTIVIRUS.md) | Why antivirus may flag the app, and how to allow it. |
 
 ---
 
